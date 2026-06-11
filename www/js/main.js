@@ -81,16 +81,16 @@
   }
 
   // O botão da tela de fim muda de papel conforme o resultado:
-  // vitória em fase < 10 -> avança | vitória na 10 -> zera | derrota -> repete.
+  //   vitória em fase < 10 -> avança para a próxima
+  //   vitória na fase 10    -> zerou o jogo, volta para a 1
+  //   DERROTA               -> volta para a FASE 1 (recomeça do zero)
   function handleRestart() {
-    if (game.winner === "PLAYER") {
-      if (game.stage < TOTAL_STAGES) {
-        game.stage++;
-      } else {
-        game.stage = 1; // zerou o jogo: recomeça a jornada
-      }
-      saveStage();
+    if (game.winner === "PLAYER" && game.stage < TOTAL_STAGES) {
+      game.stage++;
+    } else {
+      game.stage = 1; // venceu o chefão OU perdeu -> recomeça do início
     }
+    saveStage();
     startFight();
   }
 
@@ -109,6 +109,10 @@
         overTitle.textContent = "VITÓRIA!";
         overSub.textContent = `${CHAR().name} foi nocauteado! Prepare-se para a fase ${game.stage + 1}...`;
         btnRestart.textContent = "PRÓXIMA FASE ▶";
+      } else if (game.stage > 1) {
+        overTitle.textContent = "DERROTA";
+        overSub.textContent = `${CHAR().name} te nocauteou! Você volta para a FASE 1.`;
+        btnRestart.textContent = "VOLTAR À FASE 1";
       } else {
         overTitle.textContent = "DERROTA";
         overSub.textContent = `${CHAR().name} venceu desta vez. Levante-se, campeão!`;
@@ -123,6 +127,30 @@
 
   document.getElementById("btn-start").addEventListener("click", startFight);
   btnRestart.addEventListener("click", handleRestart);
+
+  /* ---------- Opção: brilho de ajuda na esquiva ---------- */
+
+  const toggleHint = document.getElementById("toggle-hint");
+  const hintStateEl = document.getElementById("hint-state");
+  const hintDescEl = document.getElementById("hint-desc");
+
+  function updateHintUI() {
+    const on = game.showDodgeHint;
+    toggleHint.classList.toggle("on", on);
+    hintStateEl.textContent = on ? "LIGADO" : "DESLIGADO";
+    hintDescEl.textContent = on
+      ? "Modo fácil — o botão certo de esquiva brilha"
+      : "Modo difícil — leia o golpe do oponente!";
+  }
+
+  toggleHint.addEventListener("click", (e) => {
+    e.stopPropagation();
+    SFX.init();
+    game.showDodgeHint = !game.showDodgeHint;
+    saveHint();
+    updateHintUI();
+    vibrate(10);
+  });
 
   /* ---------- Loop principal (delta-time real + câmera lenta) ---------- */
 
@@ -153,6 +181,7 @@
     resetMatch();
     game.phase = "START";
     updateStartScreen();
+    updateHintUI();
     requestAnimationFrame(frame);
   }
 

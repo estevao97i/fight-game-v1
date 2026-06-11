@@ -57,6 +57,20 @@ function saveStage() {
 
 game.stage = loadStage();
 
+/* ---------- Opção: brilho de ajuda na esquiva (liga/desliga) ----------
+   true  = modo fácil  -> o botão de esquiva correto pisca em dourado.
+   false = modo difícil -> sem dica; você lê o golpe do oponente sozinho. */
+function loadHint() {
+  try { if (localStorage.getItem("fightv2_hint") === "0") return false; } catch (e) {}
+  return true; // padrão: ajuda ligada
+}
+
+function saveHint() {
+  try { localStorage.setItem("fightv2_hint", game.showDodgeHint ? "1" : "0"); } catch (e) {}
+}
+
+game.showDodgeHint = loadHint();
+
 /* ---------- Helpers ---------- */
 
 function setPlayerState(state, dur = 0) {

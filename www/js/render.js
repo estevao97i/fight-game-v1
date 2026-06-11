@@ -892,8 +892,9 @@ const Render = (() => {
   function renderButtons(activePointers) {
     const locked = !playerCanAct();
 
-    // Durante o telegraph, o botão de esquiva CORRETO pisca em dourado.
-    const telegraphing = opponent.state === OPP_STATE.PREPARING_ATTACK;
+    // Durante o telegraph, o botão de esquiva CORRETO pisca em dourado —
+    // mas só se a "ajuda de esquiva" estiver LIGADA (opção da tela inicial).
+    const telegraphing = opponent.state === OPP_STATE.PREPARING_ATTACK && game.showDodgeHint;
     const correctDodgeId = opponent.attackSide === SIDE.LEFT ? "DODGE_L" : "DODGE_R";
 
     for (const b of Render.buttons) {

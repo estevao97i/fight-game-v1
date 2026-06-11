@@ -28,7 +28,13 @@
         <h1 class="game-title">FIGHT<span>!</span></h1>
         <p class="game-subtitle" id="start-stage">Esquive · Contra-ataque · Vença</p>
         <button id="btn-start" class="btn-gold">LUTAR</button>
-        <p class="hint">Botões de cima = SOCO &nbsp;•&nbsp; de baixo = ESQUIVA</p>
+
+        <!-- Opção: liga/desliga o brilho de ajuda na esquiva -->
+        <button id="toggle-hint" class="btn-toggle on">
+          <span class="dot"></span>
+          <span>Brilho de ajuda: <b id="hint-state">LIGADO</b></span>
+        </button>
+        <p class="hint" id="hint-desc">Modo fácil — o botão certo de esquiva brilha</p>
       </div>
     </div>
 

@@ -141,12 +141,50 @@ html, body {
 }
 
 .hint {
-  margin-top: 26px;
+  margin-top: 14px;
   font-family: Arial, sans-serif;
   font-weight: bold;
   font-size: 12px;
   color: rgba(255, 255, 255, 0.85);
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* Pílula de opção (liga/desliga ajuda de esquiva) — estilo Clash Royale */
+.btn-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 22px;
+  font-family: Arial, sans-serif;
+  font-weight: bold;
+  font-size: 14px;
+  color: #fff;
+  padding: 11px 20px;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  background: rgba(8, 20, 45, 0.45);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.3),
+              0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: transform 0.08s ease;
+}
+
+.btn-toggle:active { transform: scale(0.96); }
+
+.btn-toggle b { color: #ffd64d; }
+
+.btn-toggle .dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ff5b5b;
+  box-shadow: 0 0 10px #ff5b5b;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn-toggle.on .dot {
+  background: #7dff6e;
+  box-shadow: 0 0 12px #7dff6e;
 }
 
 /* Estrelas da tela de vitória */
