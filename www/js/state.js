@@ -17,6 +17,7 @@ const player = {
 
 const opponent = {
   hp: CONFIG.OPP_MAX_HP,
+  maxHp: CONFIG.OPP_MAX_HP, // definido por personagem em resetMatch()
   state: OPP_STATE.IDLE,
   stateTime: 0,
   stateDur: 0,
@@ -29,13 +30,32 @@ const opponent = {
 };
 
 const game = {
-  phase: "START",      // START | FIGHTING | OVER
+  phase: "START",      // START | INTRO | FIGHTING | KO | OVER
   winner: null,        // "PLAYER" | "OPPONENT"
   banner: null,        // { text, color, time, dur }
   clock: 0,            // relógio global (ms)
   combo: 0,            // acertos consecutivos na janela vulnerável
   slowmo: 0,           // ms restantes de câmera lenta (esquiva perfeita)
+  stage: 1,            // fase atual (1..TOTAL_STAGES) — carregada abaixo
+  introTime: 0,        // ms do card "FASE X" antes da luta
+  koTime: 0,           // ms da animação de nocaute
 };
+
+/* ---------- Progresso de fases (persistido no aparelho) ---------- */
+
+function loadStage() {
+  try {
+    const s = parseInt(localStorage.getItem("fightv2_stage"), 10);
+    if (s >= 1 && s <= TOTAL_STAGES) return s;
+  } catch (e) {}
+  return 1;
+}
+
+function saveStage() {
+  try { localStorage.setItem("fightv2_stage", String(game.stage)); } catch (e) {}
+}
+
+game.stage = loadStage();
 
 /* ---------- Helpers ---------- */
 
@@ -67,7 +87,8 @@ function damage(target, amount) {
 }
 
 function opponentEnterIdle() {
-  setOpponentState(OPP_STATE.IDLE, randRange(CONFIG.IDLE_MIN_MS, CONFIG.IDLE_MAX_MS));
+  const s = CHAR().stats;
+  setOpponentState(OPP_STATE.IDLE, randRange(s.idleMin, s.idleMax));
   opponent.counterTimer = 0;
 }
 
@@ -77,7 +98,8 @@ function playerCanAct() {
 
 function resetMatch() {
   player.hp = CONFIG.PLAYER_MAX_HP;
-  opponent.hp = CONFIG.OPP_MAX_HP;
+  opponent.maxHp = CHAR().stats.hp;
+  opponent.hp = opponent.maxHp;
   player.recentPunches = [];
   player.offsetX = 0;
   player.hitFlash = 0;
@@ -89,6 +111,8 @@ function resetMatch() {
   game.banner = null;
   game.combo = 0;
   game.slowmo = 0;
+  game.introTime = 0;
+  game.koTime = 0;
   setPlayerState(PLAYER_STATE.IDLE);
   opponentEnterIdle();
   Effects.reset();

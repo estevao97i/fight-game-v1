@@ -16,14 +16,19 @@
 /* ---------- Geometria compartilhada (lógica + render usam) ---------- */
 
 // Âncora do oponente (centro, com esquiva + ginga do idle).
+// O personagem é desenhado com escala `s` ancorada no chão (y=360);
+// headY/bodyY já saem em coordenadas de MUNDO (pós-escala), para a
+// colisão e os efeitos baterem com o desenho.
 function oppAnchor() {
+  const s = CHAR().look.scale || 1;
   const idleBob = opponent.state === OPP_STATE.IDLE ? Math.sin(game.clock / 290) * 5 : 0;
   const sway = opponent.state === OPP_STATE.IDLE ? Math.sin(game.clock / 530) * 6 : 0;
   return {
     cx: CONFIG.VW / 2 + opponent.offsetX + sway,
-    headY: 188 + idleBob,
-    bodyY: 282 + idleBob * 0.5,
+    headY: 360 - (360 - (188 + idleBob)) * s,
+    bodyY: 360 - (360 - (282 + idleBob * 0.5)) * s,
     bob: idleBob,
+    s,
   };
 }
 
@@ -80,7 +85,8 @@ function playerPunch(side) {
   }
 
   // Às vezes o oponente esquiva um jab "no vazio" (sem punição).
-  if (opponent.state === OPP_STATE.IDLE && Math.random() < CONFIG.OPP_JAB_DODGE_CHANCE) {
+  // A chance cresce a cada fase — rivais avançados escapam muito mais.
+  if (opponent.state === OPP_STATE.IDLE && Math.random() < CHAR().stats.dodgeChance) {
     setOpponentState(OPP_STATE.DODGING, CONFIG.OPP_DODGE_MS);
   }
 }
@@ -120,17 +126,19 @@ function updatePlayerPunchCollision() {
   const a = oppAnchor();
   const r = CONFIG.HIT_GLOVE_R * glove.scale * 0.7;
 
-  const hitHead = circlesOverlap(glove.x, glove.y, r, a.cx, a.headY, CONFIG.HIT_OPP_HEAD_R);
-  const hitBody = circlesOverlap(glove.x, glove.y, r, a.cx, a.bodyY, CONFIG.HIT_OPP_BODY_R);
+  // Hurtboxes escalam com o tamanho do personagem (chefão é maior).
+  const hitHead = circlesOverlap(glove.x, glove.y, r, a.cx, a.headY, CONFIG.HIT_OPP_HEAD_R * a.s);
+  const hitBody = circlesOverlap(glove.x, glove.y, r, a.cx, a.bodyY, CONFIG.HIT_OPP_BODY_R * a.s);
   if (!hitHead && !hitBody) return; // passou raspando (ele esquivou)
 
   attackHitDone = true;
   const ix = glove.x, iy = glove.y; // ponto de impacto p/ efeitos
+  const def = CHAR().stats.def;     // defesa: rivais avançados perdem menos vida
 
   if (opponent.state === OPP_STATE.VULNERABLE) {
     // GOLPE FORTE — janela de contra-ataque aproveitada!
     game.combo++;
-    const dmg = CONFIG.DMG_PLAYER_VULN_HIT;
+    const dmg = Math.max(1, Math.round(CONFIG.DMG_PLAYER_VULN_HIT * def));
     damage(opponent, dmg);
     setOpponentState(OPP_STATE.HIT, CONFIG.OPP_HIT_STUN_MS);
     opponent.hitFlash = 1;
@@ -138,12 +146,13 @@ function updatePlayerPunchCollision() {
     Effects.addShake(9);
     Effects.burst(ix, iy, CONFIG.COLORS.gold, 16, 0.34);
     Effects.ring(ix, iy, "#ffffff");
+    Effects.comic(ix, iy - 10); // "POW!" de quadrinhos
     Effects.damageText(a.cx, a.headY - 60, "-" + dmg, CONFIG.COLORS.gold, true);
     showBanner(game.combo > 1 ? `COMBO x${game.combo}!` : "ACERTOU!", CONFIG.COLORS.good);
     checkGameOver();
   } else if (opponent.state !== OPP_STATE.DODGING && opponent.state !== OPP_STATE.HIT) {
-    // JAB de chip damage — dano pequeno, sem punição (deixa o jogo fácil).
-    const dmg = CONFIG.DMG_PLAYER_JAB;
+    // JAB de chip damage — dano pequeno, sem punição.
+    const dmg = Math.max(1, Math.round(CONFIG.DMG_PLAYER_JAB * def));
     damage(opponent, dmg);
     opponent.hitFlash = 0.6;
     SFX.jab();
@@ -171,10 +180,11 @@ function resolveOpponentStrike() {
   setOpponentState(OPP_STATE.ATTACKING, CONFIG.OPP_STRIKE_ANIM_MS);
 
   if (dodgedByState || dodgedByGeometry) {
-    // ESQUIVOU! Abre a janela de contra-ataque.
+    // ESQUIVOU! Abre a janela de contra-ataque (encolhe a cada fase).
     const sinceDodge = game.clock - player.lastDodgeAt;
     const perfect = sinceDodge <= CONFIG.PERFECT_DODGE_MS;
-    const vulnMs = perfect ? CONFIG.OPP_VULN_PERFECT_MS : CONFIG.OPP_VULN_MS;
+    const baseVuln = CHAR().stats.vuln;
+    const vulnMs = perfect ? Math.round(baseVuln * 1.35) : baseVuln;
 
     // Agenda a vulnerabilidade para depois da animação do soco dele.
     opponent.pendingVuln = vulnMs;
@@ -187,8 +197,8 @@ function resolveOpponentStrike() {
     }
     SFX.dodge();
   } else {
-    // Tomou o soco.
-    damage(player, CONFIG.DMG_OPP_PUNCH);
+    // Tomou o soco — o dano sobe a cada fase.
+    damage(player, CHAR().stats.dmg);
     player.hitFlash = 1;
     game.combo = 0;
     if (
@@ -201,7 +211,7 @@ function resolveOpponentStrike() {
     }
     SFX.playerHit();
     Effects.addShake(11);
-    Effects.damageText(CONFIG.VW / 2, 420, "-" + CONFIG.DMG_OPP_PUNCH, CONFIG.COLORS.bad, true);
+    Effects.damageText(CONFIG.VW / 2, 420, "-" + CHAR().stats.dmg, CONFIG.COLORS.bad, true);
     showBanner("VOCÊ TOMOU O SOCO!", CONFIG.COLORS.bad);
     checkGameOver();
   }
@@ -237,18 +247,19 @@ function updatePlayer(dt) {
 function updateOpponent(dt) {
   opponent.stateTime += dt;
 
-  // Contra-ataque agendado (punição de spam).
+  // Contra-ataque agendado (punição de spam) — escala com o personagem.
   if (opponent.counterTimer > 0) {
     opponent.counterTimer -= dt;
     if (opponent.counterTimer <= 0) {
       opponent.counterTimer = 0;
+      const counterDmg = Math.max(4, Math.round(CHAR().stats.dmg * 0.6));
       setOpponentState(OPP_STATE.ATTACKING, CONFIG.OPP_STRIKE_ANIM_MS);
-      damage(player, CONFIG.DMG_COUNTER);
+      damage(player, counterDmg);
       player.hitFlash = 0.8;
       game.combo = 0;
       SFX.playerHit();
       Effects.addShake(7);
-      Effects.damageText(CONFIG.VW / 2, 420, "-" + CONFIG.DMG_COUNTER, CONFIG.COLORS.bad, false);
+      Effects.damageText(CONFIG.VW / 2, 420, "-" + counterDmg, CONFIG.COLORS.bad, false);
       showBanner("CONTRA-ATAQUE!", CONFIG.COLORS.bad);
       checkGameOver();
     }
@@ -265,7 +276,8 @@ function updateOpponent(dt) {
     case OPP_STATE.IDLE:
       if (opponent.stateTime >= opponent.stateDur) {
         opponent.attackSide = Math.random() < 0.5 ? SIDE.LEFT : SIDE.RIGHT;
-        setOpponentState(OPP_STATE.PREPARING_ATTACK, CONFIG.TELEGRAPH_MS);
+        // O telegraph encolhe a cada fase = menos tempo de reação p/ você.
+        setOpponentState(OPP_STATE.PREPARING_ATTACK, CHAR().stats.telegraph);
         SFX.telegraph();
       }
       break;
@@ -280,6 +292,13 @@ function updateOpponent(dt) {
           // Errou o soco -> fica aberto para o seu contra-ataque.
           setOpponentState(OPP_STATE.VULNERABLE, opponent.pendingVuln);
           opponent.pendingVuln = 0;
+        } else if (Math.random() < CHAR().stats.chain) {
+          // COMBO DELE: emenda outro soco na hora, com aviso mais curto.
+          // (Marca registrada das fases altas e do chefão.)
+          opponent.attackSide = Math.random() < 0.5 ? SIDE.LEFT : SIDE.RIGHT;
+          setOpponentState(OPP_STATE.PREPARING_ATTACK, Math.round(CHAR().stats.telegraph * 0.85));
+          SFX.telegraph();
+          showBanner("OLHA O COMBO!", CONFIG.COLORS.bad, 500);
         } else {
           opponentEnterIdle();
         }
@@ -310,11 +329,21 @@ function checkGameOver() {
   if (game.phase !== "FIGHTING") return;
   if (player.hp <= 0 || opponent.hp <= 0) {
     game.winner = opponent.hp <= 0 ? "PLAYER" : "OPPONENT";
-    game.phase = "OVER";
-    if (game.winner === "PLAYER") { SFX.win(); Effects.addShake(6); }
-    else SFX.lose();
-    // main.js mostra a tela de fim após uma pequena pausa dramática.
-    if (typeof onMatchOver === "function") onMatchOver();
+    if (game.winner === "PLAYER") {
+      // Sequência de NOCAUTE: o rival cai, chove confete, "NOCAUTE!" na
+      // tela — só depois a tela de vitória aparece (ver updateGame).
+      game.phase = "KO";
+      game.koTime = 0;
+      const a = oppAnchor();
+      SFX.bigHit(); SFX.bell(); SFX.win();
+      Effects.addShake(14);
+      Effects.ring(a.cx, a.headY, CONFIG.COLORS.gold);
+      Effects.confetti(CONFIG.VW / 2, 200, 70);
+    } else {
+      game.phase = "OVER";
+      SFX.lose();
+      if (typeof onMatchOver === "function") onMatchOver();
+    }
   }
 }
 
@@ -329,6 +358,27 @@ function updateGame(dt) {
   }
 
   Effects.update(dt);
+
+  // Card "FASE X" antes da luta começar.
+  if (game.phase === "INTRO") {
+    game.introTime += dt;
+    if (game.introTime >= 1800) {
+      game.phase = "FIGHTING";
+      SFX.bell();
+      showBanner("LUTE!", CONFIG.COLORS.gold, 1100);
+    }
+    return;
+  }
+
+  // Animação de nocaute: o rival cai antes da tela de vitória.
+  if (game.phase === "KO") {
+    game.koTime += dt;
+    if (game.koTime >= 2100) {
+      game.phase = "OVER";
+      if (typeof onMatchOver === "function") onMatchOver();
+    }
+    return;
+  }
 
   if (game.phase !== "FIGHTING") return;
 

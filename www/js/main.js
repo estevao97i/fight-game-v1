@@ -43,7 +43,7 @@
   window.addEventListener("keydown", (e) => {
     if (e.repeat) return;
     if (game.phase === "START" && (e.key === " " || e.key === "Enter")) { startFight(); return; }
-    if (game.phase === "OVER" && (e.key === " " || e.key === "Enter")) { startFight(); return; }
+    if (game.phase === "OVER" && (e.key === " " || e.key === "Enter")) { handleRestart(); return; }
     switch (e.key.toLowerCase()) {
       case "a": playerPunch(SIDE.LEFT); break;
       case "d": playerPunch(SIDE.RIGHT); break;
@@ -56,36 +56,73 @@
     if (navigator.vibrate) { try { navigator.vibrate(ms); } catch (e) {} }
   }
 
-  /* ---------- Telas ---------- */
+  /* ---------- Telas e fluxo de fases ---------- */
+
+  const btnRestart = document.getElementById("btn-restart");
+
+  // Atualiza o subtítulo da tela inicial com a fase/rival atual.
+  function updateStartScreen() {
+    const label = document.getElementById("start-stage");
+    if (!label) return;
+    const ch = CHAR();
+    label.textContent = game.stage === TOTAL_STAGES
+      ? `⚠ FASE FINAL — vs ${ch.name} ⚠`
+      : `Fase ${game.stage} de ${TOTAL_STAGES} — vs ${ch.name}`;
+  }
 
   function startFight() {
     SFX.init();
     resetMatch();
-    game.phase = "FIGHTING";
+    // Card "FASE X" aparece antes do sino (transição em logic.js).
+    game.phase = "INTRO";
     screenStart.classList.add("hidden");
     screenOver.classList.add("hidden");
-    SFX.bell();
-    showBanner("LUTE!", CONFIG.COLORS.gold, 1100);
+    SFX.whoosh();
   }
 
-  // Chamado pela lógica quando alguém zera o HP (pausa dramática antes da tela).
+  // O botão da tela de fim muda de papel conforme o resultado:
+  // vitória em fase < 10 -> avança | vitória na 10 -> zera | derrota -> repete.
+  function handleRestart() {
+    if (game.winner === "PLAYER") {
+      if (game.stage < TOTAL_STAGES) {
+        game.stage++;
+      } else {
+        game.stage = 1; // zerou o jogo: recomeça a jornada
+      }
+      saveStage();
+    }
+    startFight();
+  }
+
+  // Chamado pela lógica quando a luta termina (após a animação de KO).
   window.onMatchOver = () => {
     const won = game.winner === "PLAYER";
+    const champion = won && game.stage === TOTAL_STAGES;
     if (won) vibrate(60); else vibrate([40, 60, 40]);
+
     setTimeout(() => {
-      overTitle.textContent = won ? "VITÓRIA!" : "DERROTA";
+      if (champion) {
+        overTitle.textContent = "CAMPEÃO!";
+        overSub.textContent = "Você venceu o DEMOLIDOR e zerou o jogo! 👑";
+        btnRestart.textContent = "JOGAR DE NOVO";
+      } else if (won) {
+        overTitle.textContent = "VITÓRIA!";
+        overSub.textContent = `${CHAR().name} foi nocauteado! Prepare-se para a fase ${game.stage + 1}...`;
+        btnRestart.textContent = "PRÓXIMA FASE ▶";
+      } else {
+        overTitle.textContent = "DERROTA";
+        overSub.textContent = `${CHAR().name} venceu desta vez. Levante-se, campeão!`;
+        btnRestart.textContent = "TENTAR DE NOVO";
+      }
       overTitle.classList.toggle("lose", !won);
       overStars.classList.toggle("lose", !won);
-      overSub.textContent = won
-        ? "Você nocauteou o rival! 🏆"
-        : "Levante-se, campeão. Tente de novo!";
-      // reinicia a animação das estrelas
       screenOver.classList.remove("hidden");
-    }, 900);
+      updateStartScreen();
+    }, won ? 250 : 900);
   };
 
   document.getElementById("btn-start").addEventListener("click", startFight);
-  document.getElementById("btn-restart").addEventListener("click", startFight);
+  btnRestart.addEventListener("click", handleRestart);
 
   /* ---------- Loop principal (delta-time real + câmera lenta) ---------- */
 
@@ -115,6 +152,7 @@
     RiveBridge.init();
     resetMatch();
     game.phase = "START";
+    updateStartScreen();
     requestAnimationFrame(frame);
   }
 

@@ -26,7 +26,7 @@
       <div class="screen-inner">
         <div class="logo-gloves">🥊</div>
         <h1 class="game-title">FIGHT<span>!</span></h1>
-        <p class="game-subtitle">Esquive · Contra-ataque · Vença</p>
+        <p class="game-subtitle" id="start-stage">Esquive · Contra-ataque · Vença</p>
         <button id="btn-start" class="btn-gold">LUTAR</button>
         <p class="hint">Botões de cima = SOCO &nbsp;•&nbsp; de baixo = ESQUIVA</p>
       </div>
@@ -52,8 +52,9 @@
        Se falhar offline, o jogo segue 100% funcional. -->
   <script src="https://unpkg.com/@rive-app/canvas"></script>
 
-  <!-- Ordem importa: config -> sfx -> state -> rive -> effects -> logic -> render -> main -->
+  <!-- Ordem importa: config -> characters -> sfx -> state -> rive -> effects -> logic -> render -> main -->
   <script src="js/config.js"></script>
+  <script src="js/characters.js"></script>
   <script src="js/sfx.js"></script>
   <script src="js/state.js"></script>
   <script src="js/rive-bridge.js"></script>
