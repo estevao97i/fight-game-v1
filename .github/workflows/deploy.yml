@@ -1,0 +1,48 @@
+# =====================================================================
+# Publica o jogo no GitHub Pages automaticamente.
+# Toda vez que você der "git push" na branch main, este robô pega a
+# pasta www/ (o jogo) e a coloca no ar em:
+#   https://estevao97i.github.io/fight-game-v1/
+# Não há compilação: o jogo é HTML/CSS/JS puro, então é só servir.
+# =====================================================================
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches: [main]      # roda a cada push na main
+  workflow_dispatch:       # ...e também dá pra rodar na mão pelo site
+
+# Permissões que o robô precisa para publicar no Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Evita dois deploys ao mesmo tempo (cancela o antigo se vier um novo)
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Configurar o Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true   # liga o Pages sozinho na primeira vez
+
+      - name: Empacotar a pasta www/ (o jogo)
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: www
+
+      - name: Publicar no Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

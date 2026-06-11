@@ -1,0 +1,16 @@
+# --- Cordova (builds nativos — gerados localmente, não vão pro git) ---
+platforms/
+plugins/
+node_modules/
+
+# --- Segredos de assinatura (NUNCA commitar!) ---
+*.keystore
+*.jks
+*.mobileprovision
+*.p12
+build.json
+
+# --- Sistema ---
+.DS_Store
+*.log
+npm-debug.log*
