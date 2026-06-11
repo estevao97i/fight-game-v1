@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <!-- Mobile First: trava escala, impede zoom e cobre o notch (viewport-fit=cover) -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#1a6dd4" />
+  <!-- CSP exigida pelo Cordova (permite o runtime do Rive via unpkg quando online) -->
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self' data: gap: https://unpkg.com 'unsafe-inline' 'unsafe-eval'; media-src *; img-src 'self' data:;" />
+  <title>Fight v2</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- O jogo inteiro (arena, lutadores, HUD, botões) é desenhado no canvas
+       em resolução virtual 9:16, escalado para qualquer celular. -->
+  <div id="stage">
+    <canvas id="game"></canvas>
+
+    <!-- ===== TELA DE START (overlay DOM, estilo Clash Royale) ===== -->
+    <div id="screen-start" class="screen">
+      <div class="sky-anim"></div>
+      <div class="screen-inner">
+        <div class="logo-gloves">🥊</div>
+        <h1 class="game-title">FIGHT<span>!</span></h1>
+        <p class="game-subtitle">Esquive · Contra-ataque · Vença</p>
+        <button id="btn-start" class="btn-gold">LUTAR</button>
+        <p class="hint">Botões de cima = SOCO &nbsp;•&nbsp; de baixo = ESQUIVA</p>
+      </div>
+    </div>
+
+    <!-- ===== TELA DE GAME OVER / VITÓRIA ===== -->
+    <div id="screen-over" class="screen hidden">
+      <div class="screen-inner">
+        <div id="over-stars" class="stars">
+          <span class="star s1">★</span><span class="star s2">★</span><span class="star s3">★</span>
+        </div>
+        <h1 id="over-title" class="game-title">VITÓRIA!</h1>
+        <p id="over-sub" class="game-subtitle"></p>
+        <button id="btn-restart" class="btn-gold">REVANCHE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cordova injeta este arquivo no build nativo (404 inofensivo no navegador) -->
+  <script src="cordova.js"></script>
+
+  <!-- Runtime do Rive (opcional — USE_RIVE=false usa a arte canvas nativa).
+       Se falhar offline, o jogo segue 100% funcional. -->
+  <script src="https://unpkg.com/@rive-app/canvas"></script>
+
+  <!-- Ordem importa: config -> sfx -> state -> rive -> effects -> logic -> render -> main -->
+  <script src="js/config.js"></script>
+  <script src="js/sfx.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/rive-bridge.js"></script>
+  <script src="js/effects.js"></script>
+  <script src="js/logic.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

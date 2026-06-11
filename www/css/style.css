@@ -1,0 +1,172 @@
+/* =====================================================================
+   FIGHT V2 — Estilo das telas (Start / Game Over) + layout do stage.
+   Visual: colorido, chapado e brilhante, inspirado em Clash Royale.
+   ===================================================================== */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #0b1530;
+  /* trava seleção/zoom/long-press no mobile */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+  font-family: "Arial Black", "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Centraliza o canvas 9:16 na tela */
+#stage {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#game {
+  display: block;
+  border-radius: 6px;
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.6);
+}
+
+/* =====================================================================
+   OVERLAYS (Start / Game Over) — cobrem exatamente a área do canvas.
+   O JS posiciona width/height para casar com o canvas.
+   ===================================================================== */
+.screen {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #2a8fff 0%, #1a6dd4 35%, #6a3fd4 100%);
+  z-index: 10;
+  opacity: 1;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.screen.hidden {
+  opacity: 0;
+  transform: scale(1.06);
+  pointer-events: none;
+}
+
+/* céu animado de fundo (listras diagonais girando, vibe de menu CR) */
+.sky-anim {
+  position: absolute;
+  inset: -60%;
+  background: repeating-conic-gradient(
+    from 0deg,
+    rgba(255, 255, 255, 0.10) 0deg 12deg,
+    rgba(255, 255, 255, 0.0) 12deg 24deg
+  );
+  animation: spin 30s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.screen-inner {
+  position: relative;
+  text-align: center;
+  padding: 24px;
+  width: 100%;
+}
+
+.logo-gloves {
+  font-size: 84px;
+  filter: drop-shadow(0 8px 0 rgba(0, 0, 0, 0.25));
+  animation: bob 1.6s ease-in-out infinite;
+}
+
+@keyframes bob {
+  0%, 100% { transform: translateY(0) rotate(-6deg); }
+  50%      { transform: translateY(-14px) rotate(6deg); }
+}
+
+.game-title {
+  font-size: 64px;
+  color: #fff;
+  letter-spacing: 2px;
+  -webkit-text-stroke: 3px #1a2a55;
+  text-shadow:
+    0 5px 0 #1a2a55,
+    0 10px 24px rgba(0, 0, 0, 0.45);
+  margin: 8px 0 4px;
+}
+
+.game-title span { color: #ffd64d; -webkit-text-stroke: 3px #8a5a00; }
+
+.game-title.lose { color: #ff7b7b; -webkit-text-stroke: 3px #581425; text-shadow: 0 5px 0 #581425, 0 10px 24px rgba(0,0,0,.45); }
+
+.game-subtitle {
+  font-family: Arial, sans-serif;
+  font-weight: bold;
+  color: #eaf3ff;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+  font-size: 16px;
+  margin-bottom: 28px;
+}
+
+/* Botão dourado estilo Clash Royale */
+.btn-gold {
+  font-family: "Arial Black", Arial, sans-serif;
+  font-size: 26px;
+  letter-spacing: 1px;
+  color: #5a3a00;
+  padding: 16px 56px;
+  border: none;
+  border-radius: 16px;
+  cursor: pointer;
+  background: linear-gradient(180deg, #ffe98a 0%, #ffc93c 45%, #f5a623 100%);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.8),
+    0 6px 0 #b76e00,
+    0 12px 22px rgba(0, 0, 0, 0.35);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+
+.btn-gold:active {
+  transform: translateY(5px);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.8),
+    0 1px 0 #b76e00,
+    0 4px 10px rgba(0, 0, 0, 0.35);
+}
+
+.hint {
+  margin-top: 26px;
+  font-family: Arial, sans-serif;
+  font-weight: bold;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.85);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* Estrelas da tela de vitória */
+.stars { height: 70px; margin-bottom: 4px; }
+
+.star {
+  display: inline-block;
+  font-size: 54px;
+  color: #ffd64d;
+  -webkit-text-stroke: 2px #8a5a00;
+  text-shadow: 0 4px 0 rgba(0, 0, 0, 0.25);
+  opacity: 0;
+  transform: scale(0);
+}
+
+.screen:not(.hidden) .star { animation: starPop 0.45s cubic-bezier(.2,2.2,.4,1) forwards; }
+.screen:not(.hidden) .star.s1 { animation-delay: 0.15s; transform-origin: bottom; }
+.screen:not(.hidden) .star.s2 { animation-delay: 0.35s; font-size: 68px; }
+.screen:not(.hidden) .star.s3 { animation-delay: 0.55s; }
+
+@keyframes starPop { to { opacity: 1; transform: scale(1); } }
+
+.stars.lose .star { color: #5a6b8c; -webkit-text-stroke: 2px #2a3550; }

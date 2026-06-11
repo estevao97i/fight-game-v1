@@ -1,0 +1,25 @@
+{
+  "name": "fight-v2",
+  "displayName": "Fight v2",
+  "version": "1.0.0",
+  "description": "Jogo de luta em primeira pessoa: esquive, contra-ataque e vença!",
+  "author": "Estevão Córdova",
+  "license": "MIT",
+  "scripts": {
+    "dev": "npx http-server www -p 8080 -c-1",
+    "android": "cordova run android",
+    "ios": "cordova run ios",
+    "build:android": "cordova build android --release",
+    "build:ios": "cordova build ios --release"
+  },
+  "devDependencies": {
+    "cordova-android": "^13.0.0",
+    "cordova-ios": "^7.1.0"
+  },
+  "cordova": {
+    "platforms": [
+      "android",
+      "ios"
+    ]
+  }
+}
