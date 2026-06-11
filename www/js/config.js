@@ -4,7 +4,6 @@
    ===================================================================== */
 
 const CONFIG = {
-  
   // Resolução virtual (vertical, mobile-first). Tudo é desenhado nessas
   // coordenadas e escalado para o tamanho real do dispositivo.
   VW: 360,
