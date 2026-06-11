@@ -57,19 +57,44 @@ function saveStage() {
 
 game.stage = loadStage();
 
-/* ---------- Opção: brilho de ajuda na esquiva (liga/desliga) ----------
-   true  = modo fácil  -> o botão de esquiva correto pisca em dourado.
-   false = modo difícil -> sem dica; você lê o golpe do oponente sozinho. */
-function loadHint() {
-  try { if (localStorage.getItem("fightv2_hint") === "0") return false; } catch (e) {}
-  return true; // padrão: ajuda ligada
+/* ---------- Dificuldade (Fácil / Normal / Difícil) ----------
+   facil   -> o botão de esquiva correto brilha (dica visual)
+   normal  -> sem dica; você lê o golpe do oponente sozinho
+   dificil -> sem dica + golpes do rival mais rápidos e mais fortes  */
+const DIFFICULTIES = {
+  facil:   { label: "Fácil",   hint: true,  telegraphMult: 1.0,  oppDmgMult: 1.0,
+             desc: "O botão certo de esquiva brilha em dourado" },
+  normal:  { label: "Normal",  hint: false, telegraphMult: 1.0,  oppDmgMult: 1.0,
+             desc: "Sem dicas — leia a luva erguida do rival" },
+  dificil: { label: "Difícil", hint: false, telegraphMult: 0.85, oppDmgMult: 1.25,
+             desc: "Sem dicas, golpes mais rápidos e mais fortes" },
+};
+
+function DIFF() {
+  return DIFFICULTIES[game.difficulty] || DIFFICULTIES.facil;
 }
 
-function saveHint() {
-  try { localStorage.setItem("fightv2_hint", game.showDodgeHint ? "1" : "0"); } catch (e) {}
+function setDifficulty(key) {
+  if (!DIFFICULTIES[key]) key = "facil";
+  game.difficulty = key;
+  game.showDodgeHint = DIFFICULTIES[key].hint; // o render lê esta flag
+  try { localStorage.setItem("fightv2_diff", key); } catch (e) {}
 }
 
-game.showDodgeHint = loadHint();
+function loadDifficulty() {
+  try {
+    const d = localStorage.getItem("fightv2_diff");
+    if (DIFFICULTIES[d]) return d;
+    // migração da opção antiga (brilho ligado/desligado)
+    if (localStorage.getItem("fightv2_hint") === "0") return "normal";
+  } catch (e) {}
+  return "facil";
+}
+
+setDifficulty(loadDifficulty());
+
+// Pause: congela gameplay, timers, IA e efeitos (ver main.js / updateGame).
+game.paused = false;
 
 /* ---------- Helpers ---------- */
 
@@ -107,7 +132,7 @@ function opponentEnterIdle() {
 }
 
 function playerCanAct() {
-  return game.phase === "FIGHTING" && player.state === PLAYER_STATE.IDLE;
+  return game.phase === "FIGHTING" && !game.paused && player.state === PLAYER_STATE.IDLE;
 }
 
 function resetMatch() {

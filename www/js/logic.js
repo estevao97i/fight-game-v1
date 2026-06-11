@@ -55,6 +55,15 @@ function circlesOverlap(x1, y1, r1, x2, y2, r2) {
   return dx * dx + dy * dy <= (r1 + r2) * (r1 + r2);
 }
 
+// Stats efetivos do oponente = personagem da fase × dificuldade global.
+function oppDamage() {
+  return Math.max(1, Math.round(CHAR().stats.dmg * DIFF().oppDmgMult));
+}
+
+function oppTelegraph() {
+  return Math.max(200, Math.round(CHAR().stats.telegraph * DIFF().telegraphMult));
+}
+
 /* ---------- Ações do JOGADOR (disparadas pelo input) ---------- */
 
 let attackHitDone = false; // o soco atual já registrou colisão?
@@ -197,8 +206,8 @@ function resolveOpponentStrike() {
     }
     SFX.dodge();
   } else {
-    // Tomou o soco — o dano sobe a cada fase.
-    damage(player, CHAR().stats.dmg);
+    // Tomou o soco — o dano sobe a cada fase (e com a dificuldade).
+    damage(player, oppDamage());
     player.hitFlash = 1;
     game.combo = 0;
     if (
@@ -211,7 +220,7 @@ function resolveOpponentStrike() {
     }
     SFX.playerHit();
     Effects.addShake(11);
-    Effects.damageText(CONFIG.VW / 2, 420, "-" + CHAR().stats.dmg, CONFIG.COLORS.bad, true);
+    Effects.damageText(CONFIG.VW / 2, 420, "-" + oppDamage(), CONFIG.COLORS.bad, true);
     showBanner("VOCÊ TOMOU O SOCO!", CONFIG.COLORS.bad);
     checkGameOver();
   }
@@ -252,7 +261,7 @@ function updateOpponent(dt) {
     opponent.counterTimer -= dt;
     if (opponent.counterTimer <= 0) {
       opponent.counterTimer = 0;
-      const counterDmg = Math.max(4, Math.round(CHAR().stats.dmg * 0.6));
+      const counterDmg = Math.max(4, Math.round(oppDamage() * 0.6));
       setOpponentState(OPP_STATE.ATTACKING, CONFIG.OPP_STRIKE_ANIM_MS);
       damage(player, counterDmg);
       player.hitFlash = 0.8;
@@ -276,8 +285,9 @@ function updateOpponent(dt) {
     case OPP_STATE.IDLE:
       if (opponent.stateTime >= opponent.stateDur) {
         opponent.attackSide = Math.random() < 0.5 ? SIDE.LEFT : SIDE.RIGHT;
-        // O telegraph encolhe a cada fase = menos tempo de reação p/ você.
-        setOpponentState(OPP_STATE.PREPARING_ATTACK, CHAR().stats.telegraph);
+        // O telegraph encolhe a cada fase (e na dificuldade Difícil)
+        // = menos tempo de reação para você.
+        setOpponentState(OPP_STATE.PREPARING_ATTACK, oppTelegraph());
         SFX.telegraph();
       }
       break;
@@ -296,7 +306,7 @@ function updateOpponent(dt) {
           // COMBO DELE: emenda outro soco na hora, com aviso mais curto.
           // (Marca registrada das fases altas e do chefão.)
           opponent.attackSide = Math.random() < 0.5 ? SIDE.LEFT : SIDE.RIGHT;
-          setOpponentState(OPP_STATE.PREPARING_ATTACK, Math.round(CHAR().stats.telegraph * 0.85));
+          setOpponentState(OPP_STATE.PREPARING_ATTACK, Math.round(oppTelegraph() * 0.85));
           SFX.telegraph();
           showBanner("OLHA O COMBO!", CONFIG.COLORS.bad, 500);
         } else {
@@ -350,6 +360,9 @@ function checkGameOver() {
 /* ---------- Update mestre ---------- */
 
 function updateGame(dt) {
+  // PAUSE: congela tudo — relógio, IA, timers, cooldowns e partículas.
+  if (game.paused) return;
+
   game.clock += dt;
 
   if (game.banner) {

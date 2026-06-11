@@ -55,15 +55,16 @@ const Render = (() => {
 
   /* ---------- Utilidades de desenho ---------- */
 
-  function rr(x, y, w, h, r) {
+  // Retângulo arredondado (c opcional permite reuso no canvas do tutorial).
+  function rr(x, y, w, h, r, c = ctx) {
     const v = Math.min(r, w / 2, h / 2);
-    ctx.beginPath();
-    ctx.moveTo(x + v, y);
-    ctx.arcTo(x + w, y, x + w, y + h, v);
-    ctx.arcTo(x + w, y + h, x, y + h, v);
-    ctx.arcTo(x, y + h, x, y, v);
-    ctx.arcTo(x, y, x + w, y, v);
-    ctx.closePath();
+    c.beginPath();
+    c.moveTo(x + v, y);
+    c.arcTo(x + w, y, x + w, y + h, v);
+    c.arcTo(x + w, y + h, x, y + h, v);
+    c.arcTo(x, y + h, x, y, v);
+    c.arcTo(x, y, x + w, y, v);
+    c.closePath();
   }
 
   function lgrad(x0, y0, x1, y1, c0, c1) {
@@ -75,27 +76,71 @@ const Render = (() => {
   function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
 
   // Luva de boxe cartoon (gradiente + brilho + contorno).
-  function drawGlove(x, y, r, colorA, colorB, angle = 0) {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(angle);
-    const g = ctx.createRadialGradient(-r * 0.35, -r * 0.4, r * 0.15, 0, 0, r * 1.15);
+  // `c` opcional permite desenhar também no canvas do tutorial.
+  function drawGlove(x, y, r, colorA, colorB, angle = 0, c = ctx) {
+    c.save();
+    c.translate(x, y);
+    c.rotate(angle);
+    const g = c.createRadialGradient(-r * 0.35, -r * 0.4, r * 0.15, 0, 0, r * 1.15);
     g.addColorStop(0, colorA);
     g.addColorStop(1, colorB);
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+    c.fillStyle = g;
+    c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.fill();
     // polegar
-    ctx.beginPath(); ctx.arc(r * 0.62, r * 0.3, r * 0.38, 0, Math.PI * 2); ctx.fill();
+    c.beginPath(); c.arc(r * 0.62, r * 0.3, r * 0.38, 0, Math.PI * 2); c.fill();
     // contorno cartoon
-    ctx.lineWidth = Math.max(2, r * 0.1);
-    ctx.strokeStyle = C.outline;
-    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
+    c.lineWidth = Math.max(2, r * 0.1);
+    c.strokeStyle = C.outline;
+    c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.stroke();
     // brilho
-    ctx.fillStyle = "rgba(255,255,255,0.45)";
-    ctx.beginPath();
-    ctx.ellipse(-r * 0.35, -r * 0.42, r * 0.32, r * 0.18, -0.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+    c.fillStyle = "rgba(255,255,255,0.45)";
+    c.beginPath();
+    c.ellipse(-r * 0.35, -r * 0.42, r * 0.32, r * 0.18, -0.5, 0, Math.PI * 2);
+    c.fill();
+    c.restore();
+  }
+
+  // Punho fechado cartoon (ícone dos botões de soco): 4 dedos dobrados,
+  // polegar na frente e punho de luva — lê-se como "ação de soco".
+  function drawFist(c, x, y, s, colorA, colorB, dir = 1) {
+    c.save();
+    c.translate(x, y);
+    c.scale(dir, 1); // espelha para o lado esquerdo/direito
+    const g = c.createLinearGradient(0, -s, 0, s);
+    g.addColorStop(0, colorA);
+    g.addColorStop(1, colorB);
+    c.lineWidth = Math.max(2, s * 0.14);
+    c.strokeStyle = C.outline;
+
+    // punho/manga (embaixo)
+    c.fillStyle = colorB;
+    rr(-s * 0.6, s * 0.5, s * 1.2, s * 0.55, s * 0.2, c);
+    c.fill(); c.stroke();
+
+    // palma (bloco principal)
+    c.fillStyle = g;
+    rr(-s, -s * 0.5, s * 2, s * 1.2, s * 0.45, c);
+    c.fill(); c.stroke();
+
+    // 4 dedos dobrados (knuckles no topo)
+    for (let i = 0; i < 4; i++) {
+      const kx = -s * 0.72 + i * s * 0.49;
+      c.fillStyle = g;
+      c.beginPath(); c.arc(kx, -s * 0.5, s * 0.28, 0, Math.PI * 2);
+      c.fill(); c.stroke();
+    }
+
+    // polegar cruzando na frente
+    c.fillStyle = g;
+    rr(s * 0.18, -s * 0.05, s * 0.72, s * 0.72, s * 0.3, c);
+    c.fill(); c.stroke();
+
+    // brilho
+    c.fillStyle = "rgba(255,255,255,0.45)";
+    c.beginPath();
+    c.ellipse(-s * 0.45, -s * 0.15, s * 0.3, s * 0.15, -0.4, 0, Math.PI * 2);
+    c.fill();
+    c.restore();
   }
 
   /* =====================================================================
@@ -889,16 +934,21 @@ const Render = (() => {
     ];
   }
 
+  // Hover desktop (definido pelo main via pointermove com mouse).
+  let hoverId = null;
+  function setHover(id) { hoverId = id; }
+
   function renderButtons(activePointers) {
     const locked = !playerCanAct();
 
     // Durante o telegraph, o botão de esquiva CORRETO pisca em dourado —
-    // mas só se a "ajuda de esquiva" estiver LIGADA (opção da tela inicial).
+    // mas só se a dificuldade atual mostrar a dica (Fácil).
     const telegraphing = opponent.state === OPP_STATE.PREPARING_ATTACK && game.showDodgeHint;
     const correctDodgeId = opponent.attackSide === SIDE.LEFT ? "DODGE_L" : "DODGE_R";
 
     for (const b of Render.buttons) {
       const pressed = [...activePointers.values()].includes(b.id);
+      const hovered = hoverId === b.id && !pressed && !locked;
       const press = pressed ? 4 : 0;
       const highlight = telegraphing && b.id === correctDodgeId && !locked;
 
@@ -923,14 +973,23 @@ const Render = (() => {
       ctx.fillStyle = lgrad(0, b.y + press, 0, b.y + b.h, ca, cb);
       rr(b.x, b.y + press, b.w, b.h - 4, 18); ctx.fill();
       ctx.lineWidth = 3;
-      ctx.strokeStyle = "rgba(255,255,255,0.35)";
+      ctx.strokeStyle = hovered ? "rgba(255,255,255,0.8)" : "rgba(255,255,255,0.35)";
       rr(b.x + 3, b.y + press + 3, b.w - 6, b.h - 10, 14); ctx.stroke();
 
       const cxB = b.x + b.w / 2, cyB = b.y + press + b.h / 2 - 8;
       const dir = b.side === SIDE.LEFT ? -1 : 1;
 
+      // Hover desktop: ícone cresce de leve | press: afunda | cooldown: pulsa
+      const iconScale = pressed ? 0.92 : hovered ? 1.1 : 1;
+      ctx.save();
+      ctx.translate(cxB, cyB);
+      ctx.scale(iconScale, iconScale);
+      ctx.translate(-cxB, -cyB);
+      if (locked) ctx.globalAlpha = 0.55 + 0.15 * Math.sin(game.clock / 150);
+
       if (b.kind === "punch") {
-        drawGlove(cxB + dir * 0, cyB - 2, 17, "#ffffff", "#ffd0c0", dir * 0.4);
+        // punho fechado estilizado (substitui o círculo antigo)
+        drawFist(ctx, cxB, cyB - 2, 15, "#ffffff", "#ffd0c0", dir);
       } else {
         ctx.save();
         ctx.translate(cxB, cyB);
@@ -945,6 +1004,7 @@ const Render = (() => {
         ctx.fill(); ctx.stroke();
         ctx.restore();
       }
+      ctx.restore(); // fim escala do ícone (hover/press/cooldown)
 
       ctx.font = "900 12px 'Arial Black', sans-serif";
       ctx.textAlign = "center";
@@ -1116,6 +1176,209 @@ const Render = (() => {
     ctx.restore();
   }
 
+  /* ---------- Botão de PAUSE (desenhado no canvas, canto direito) ---------- */
+
+  const pauseRect = { x: CONFIG.VW - 50, y: 76, w: 40, h: 40 };
+
+  function renderPauseButton() {
+    if (game.phase !== "FIGHTING") return;
+    const p = pauseRect;
+    const hovered = hoverId === "PAUSE";
+
+    ctx.save();
+    if (hovered) {
+      ctx.translate(p.x + p.w / 2, p.y + p.h / 2);
+      ctx.scale(1.08, 1.08);
+      ctx.translate(-(p.x + p.w / 2), -(p.y + p.h / 2));
+    }
+    ctx.fillStyle = C.hudPanel;
+    rr(p.x, p.y, p.w, p.h, 12); ctx.fill();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = hovered ? C.gold : "rgba(255,255,255,0.35)";
+    ctx.stroke();
+    // ícone ⏸ (duas barras)
+    ctx.fillStyle = "#ffffff";
+    rr(p.x + 12, p.y + 11, 6, 18, 2); ctx.fill();
+    rr(p.x + 22, p.y + 11, 6, 18, 2); ctx.fill();
+    ctx.restore();
+  }
+
+  /* =====================================================================
+     ILUSTRAÇÕES DO TUTORIAL — cenas animadas desenhadas com os próprios
+     assets do jogo (luvas, estrelas, balão "!") num canvas à parte.
+     ===================================================================== */
+
+  const tutCtxCache = new WeakMap();
+
+  function tutFace(c, x, y, r, dizzy, t) {
+    // mini-cabeça do rival (versão compacta do personagem)
+    const g = c.createRadialGradient(x - 4, y - 5, 2, x, y, r * 1.2);
+    g.addColorStop(0, C.oppSkinA); g.addColorStop(1, C.oppSkinB);
+    c.fillStyle = g;
+    c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill();
+    c.lineWidth = 3; c.strokeStyle = C.outline; c.stroke();
+    c.fillStyle = C.oppHair;
+    c.beginPath(); c.arc(x, y - 3, r - 2, Math.PI * 1.1, Math.PI * 1.9); c.closePath(); c.fill();
+    if (dizzy) {
+      c.strokeStyle = C.outline; c.lineWidth = 2.5;
+      for (const ex of [-r * 0.4, r * 0.4]) {
+        c.beginPath();
+        c.moveTo(x + ex - 3, y - 5); c.lineTo(x + ex + 3, y + 1);
+        c.moveTo(x + ex + 3, y - 5); c.lineTo(x + ex - 3, y + 1);
+        c.stroke();
+      }
+      // estrelinhas orbitando
+      for (let i = 0; i < 3; i++) {
+        const a = t / 240 + (i * Math.PI * 2) / 3;
+        c.save();
+        c.fillStyle = C.gold;
+        c.font = "900 13px Arial";
+        c.textAlign = "center"; c.textBaseline = "middle";
+        c.fillText("★", x + Math.cos(a) * (r + 10), y - r - 4 + Math.sin(a) * 5);
+        c.restore();
+      }
+    } else {
+      c.fillStyle = "#23304f";
+      c.beginPath(); c.arc(x - r * 0.4, y - 2, 2.5, 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.arc(x + r * 0.4, y - 2, 2.5, 0, Math.PI * 2); c.fill();
+    }
+    c.strokeStyle = C.outline; c.lineWidth = 2.5;
+    c.beginPath();
+    c.moveTo(x - 5, y + r * 0.45);
+    c.quadraticCurveTo(x, y + r * 0.45 + (dizzy ? -3 : 3), x + 5, y + r * 0.45);
+    c.stroke();
+  }
+
+  function tutBang(c, x, y, t) {
+    // balão "!" de aviso (mesmo do jogo)
+    const grow = 1 + 0.15 * Math.sin(t / 90);
+    c.save();
+    c.translate(x, y);
+    c.scale(grow, grow);
+    c.fillStyle = "#fff";
+    c.beginPath(); c.arc(0, 0, 13, 0, Math.PI * 2); c.fill();
+    c.lineWidth = 3; c.strokeStyle = C.outline; c.stroke();
+    c.fillStyle = C.telegraph;
+    c.font = "900 19px 'Arial Black', sans-serif";
+    c.textAlign = "center"; c.textBaseline = "middle";
+    c.fillText("!", 0, 1);
+    c.restore();
+  }
+
+  function tutArrow(c, x, y, dir, alpha) {
+    c.save();
+    c.globalAlpha = alpha;
+    c.translate(x, y);
+    c.scale(dir * 1.6, 1.6);
+    c.fillStyle = "#ffffff";
+    c.strokeStyle = C.outline;
+    c.lineWidth = 2.5;
+    c.beginPath();
+    c.moveTo(10, 0); c.lineTo(-2, -13); c.lineTo(-2, -5);
+    c.lineTo(-14, -5); c.lineTo(-14, 5); c.lineTo(-2, 5);
+    c.lineTo(-2, 13); c.closePath();
+    c.fill(); c.stroke();
+    c.restore();
+  }
+
+  function tutorialScene(el, step, t) {
+    let cached = tutCtxCache.get(el);
+    if (!cached) {
+      const dpr = window.devicePixelRatio || 1;
+      el.width = 300 * dpr;
+      el.height = 150 * dpr;
+      const c2 = el.getContext("2d");
+      c2.setTransform(dpr, 0, 0, dpr, 0, 0);
+      cached = c2;
+      tutCtxCache.set(el, cached);
+    }
+    const c = cached;
+
+    // fundo: mini-arena
+    c.clearRect(0, 0, 300, 150);
+    const bg = c.createLinearGradient(0, 0, 0, 150);
+    bg.addColorStop(0, C.skyTop);
+    bg.addColorStop(1, C.ringFloorBottom);
+    c.fillStyle = bg;
+    c.fillRect(0, 0, 300, 150);
+    c.strokeStyle = C.ropes; c.lineWidth = 4;
+    c.beginPath(); c.moveTo(0, 34); c.lineTo(300, 34); c.stroke();
+    c.strokeStyle = "rgba(255,255,255,0.8)"; c.lineWidth = 3;
+    c.beginPath(); c.moveTo(0, 48); c.lineTo(300, 48); c.stroke();
+
+    const GA = C.playerGloveA, GB = C.playerGloveB;
+
+    if (step === 1) {
+      // ESQUIVA: as luvas deslizam para os lados, o soco passa no meio
+      const ph = Math.sin(t / 600);                 // -1..1 (esq/dir)
+      const off = ph * 52;
+      const punch = Math.abs(Math.sin(t / 600));    // soco do rival "no centro"
+      drawGlove(150, 18 + punch * 48, 12 + punch * 16, C.oppGloveA, C.oppGloveB, 0.2, c);
+      drawGlove(150 + off - 42, 118, 21, GA, GB, -0.2, c);
+      drawGlove(150 + off + 42, 118, 21, GA, GB, 0.2, c);
+      tutArrow(c, 40, 80, -1, ph < -0.2 ? 1 : 0.25);
+      tutArrow(c, 260, 80, 1, ph > 0.2 ? 1 : 0.25);
+    } else if (step === 2) {
+      // SOCO: luvas alternam jabs até o rival no topo
+      const cyc = (t % 1400) / 1400;
+      const left = Math.floor(t / 1400) % 2 === 0;
+      const out = Math.sin(Math.min(1, cyc * 1.6) * Math.PI);
+      tutFace(c, 150, 26, 16, false, t);
+      const sx = left ? 108 : 192, dirG = left ? -1 : 1;
+      drawGlove(left ? 192 : 108, 120, 21, GA, GB, dirG * -0.2, c);
+      drawGlove(sx + (150 - sx) * out, 120 + (34 - 120) * out, 21 + out * 8, GA, GB, dirG * 0.2, c);
+      if (out > 0.8) {
+        c.fillStyle = "#fff";
+        c.font = "900 16px 'Arial Black', sans-serif";
+        c.textAlign = "center";
+        c.fillText("POW!", 195, 30);
+      }
+    } else if (step === 3) {
+      // CONTRA-ATAQUE: rival tonto (estrelas) = hora de bater!
+      tutFace(c, 150, 58, 22, true, t);
+      const cyc = (t % 1100) / 1100;
+      const out = Math.sin(Math.min(1, cyc * 1.4) * Math.PI);
+      drawGlove(150, 128 + (74 - 128) * out, 20 + out * 8, GA, GB, 0.15, c);
+      if (out > 0.85) {
+        c.fillStyle = C.gold;
+        c.font = "900 15px 'Arial Black', sans-serif";
+        c.textAlign = "center";
+        c.fillText("-25", 188, 52);
+      }
+    } else {
+      // COMBINAÇÃO: ! -> esquiva -> contra-ataque (ciclo de 3 tempos)
+      const cyc = (t % 3300) / 3300;
+      if (cyc < 0.34) {
+        const p = cyc / 0.34;
+        tutFace(c, 150, 40, 18, false, t);
+        tutBang(c, 195, 18, t);
+        drawGlove(150, 60 + p * 40, 12 + p * 18, C.oppGloveA, C.oppGloveB, 0.2, c);
+        drawGlove(108, 122, 20, GA, GB, -0.2, c);
+        drawGlove(192, 122, 20, GA, GB, 0.2, c);
+      } else if (cyc < 0.67) {
+        const p = (cyc - 0.34) / 0.33;
+        const off = -Math.sin(p * Math.PI) * 55;
+        tutFace(c, 150, 40, 18, false, t);
+        drawGlove(150, 105, 26, C.oppGloveA, C.oppGloveB, 0.2, c);
+        drawGlove(108 + off, 122, 20, GA, GB, -0.2, c);
+        drawGlove(192 + off, 122, 20, GA, GB, 0.2, c);
+        tutArrow(c, 40, 85, -1, 1);
+      } else {
+        const p = (cyc - 0.67) / 0.33;
+        const out = Math.sin(p * Math.PI);
+        tutFace(c, 150, 40, 18, true, t);
+        drawGlove(192, 122, 20, GA, GB, 0.2, c);
+        drawGlove(108 + (150 - 108) * out, 122 + (54 - 122) * out, 20 + out * 9, GA, GB, 0.2, c);
+        if (out > 0.75) {
+          c.fillStyle = C.gold;
+          c.font = "900 17px 'Arial Black', sans-serif";
+          c.textAlign = "center";
+          c.fillText("POW! -25", 220, 40);
+        }
+      }
+    }
+  }
+
   /* ---------- Render mestre ---------- */
 
   function render(activePointers) {
@@ -1141,6 +1404,7 @@ const Render = (() => {
     renderSpeedLines();
     renderHitVignette();
     renderHUD();
+    renderPauseButton();
     renderButtons(activePointers);
     renderBanner();
     Effects.renderFloaters(ctx);
@@ -1154,7 +1418,13 @@ const Render = (() => {
     }
   }
 
-  const api = { resize, toVirtual, render, buttons: buildButtons() };
+  const api = {
+    resize, toVirtual, render,
+    buttons: buildButtons(),
+    pauseRect,      // hit-test do botão de pause (main.js)
+    setHover,       // hover desktop nos botões do canvas
+    tutorialScene,  // ilustrações animadas do tutorial
+  };
   api.rebuildButtons = () => { api.buttons = buildButtons(); };
   return api;
 })();

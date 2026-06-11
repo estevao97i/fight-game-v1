@@ -9,7 +9,7 @@
   <meta name="theme-color" content="#1a6dd4" />
   <!-- CSP exigida pelo Cordova (permite o runtime do Rive via unpkg quando online) -->
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self' data: gap: https://unpkg.com 'unsafe-inline' 'unsafe-eval'; media-src *; img-src 'self' data:;" />
+        content="default-src 'self' data: gap: https://unpkg.com 'unsafe-inline' 'unsafe-eval'; media-src 'self' data:; img-src 'self' data:;" />
   <title>Fight v2</title>
   <link rel="stylesheet" href="css/style.css" />
 </head>
@@ -20,7 +20,7 @@
   <div id="stage">
     <canvas id="game"></canvas>
 
-    <!-- ===== TELA DE START (overlay DOM, estilo Clash Royale) ===== -->
+    <!-- ===== TELA DE START / MENU PRINCIPAL ===== -->
     <div id="screen-start" class="screen">
       <div class="sky-anim"></div>
       <div class="screen-inner">
@@ -29,24 +29,89 @@
         <p class="game-subtitle" id="start-stage">Esquive · Contra-ataque · Vença</p>
         <button id="btn-start" class="btn-gold">LUTAR</button>
 
-        <!-- Opção: liga/desliga o brilho de ajuda na esquiva -->
-        <button id="toggle-hint" class="btn-toggle on">
-          <span class="dot"></span>
-          <span>Brilho de ajuda: <b id="hint-state">LIGADO</b></span>
-        </button>
-        <p class="hint" id="hint-desc">Modo fácil — o botão certo de esquiva brilha</p>
+        <!-- Seletor de dificuldade (segmented control) -->
+        <div class="seg-label" id="seg-label">DIFICULDADE</div>
+        <div id="difficulty-seg" class="seg" role="radiogroup" aria-labelledby="seg-label">
+          <button class="seg-opt" data-diff="facil"   role="radio" aria-checked="false">😊 Fácil</button>
+          <button class="seg-opt" data-diff="normal"  role="radio" aria-checked="false">😼 Normal</button>
+          <button class="seg-opt" data-diff="dificil" role="radio" aria-checked="false">🔥 Difícil</button>
+        </div>
+        <p class="hint" id="diff-desc"></p>
+
+        <div class="menu-row">
+          <button id="btn-tutorial" class="btn-secondary">📖 Tutorial</button>
+          <button id="btn-controls" class="btn-secondary">🎮 Controles</button>
+        </div>
       </div>
     </div>
 
-    <!-- ===== TELA DE GAME OVER / VITÓRIA ===== -->
-    <div id="screen-over" class="screen hidden">
+    <!-- ===== TELA DE FIM DE PARTIDA (vitória / derrota) ===== -->
+    <div id="screen-over" class="screen hidden" role="dialog" aria-modal="true">
       <div class="screen-inner">
         <div id="over-stars" class="stars">
           <span class="star s1">★</span><span class="star s2">★</span><span class="star s3">★</span>
         </div>
-        <h1 id="over-title" class="game-title">VITÓRIA!</h1>
+        <h1 id="over-title" class="game-title">Vitória!</h1>
         <p id="over-sub" class="game-subtitle"></p>
-        <button id="btn-restart" class="btn-gold">REVANCHE</button>
+        <button id="btn-restart" class="btn-gold">PRÓXIMA FASE</button>
+        <button id="btn-over-menu" class="btn-secondary block">Voltar ao Menu</button>
+      </div>
+    </div>
+
+    <!-- ===== MODAL DE PAUSE ===== -->
+    <div id="modal-pause" class="screen overlay-dim hidden" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+      <div class="modal-card">
+        <h2 id="pause-title" class="modal-title">Jogo Pausado</h2>
+        <button id="btn-resume" class="btn-gold">Continuar</button>
+        <button id="btn-pause-menu" class="btn-secondary block">Voltar ao Menu</button>
+      </div>
+    </div>
+
+    <!-- ===== MODAL DE CONTROLES (conteúdo por dispositivo) ===== -->
+    <div id="modal-controls" class="screen overlay-dim hidden" role="dialog" aria-modal="true" aria-labelledby="controls-title">
+      <div class="modal-card">
+        <h2 id="controls-title" class="modal-title">Controles</h2>
+
+        <div id="controls-desktop" class="controls-list hidden">
+          <div class="ctrl-row"><span>Soco Esquerdo</span><kbd>A</kbd></div>
+          <div class="ctrl-row"><span>Soco Direito</span><kbd>D</kbd></div>
+          <div class="ctrl-row"><span>Esquiva Esquerda</span><kbd>←</kbd></div>
+          <div class="ctrl-row"><span>Esquiva Direita</span><kbd>→</kbd></div>
+          <div class="ctrl-row"><span>Pausar</span><kbd>Esc</kbd></div>
+        </div>
+
+        <div id="controls-mobile" class="controls-list hidden">
+          <p class="ctrl-intro">Use os botões visíveis na tela:</p>
+          <div class="ctrl-row"><span>👊 Botões de cima</span><span class="ctrl-val">Socos</span></div>
+          <div class="ctrl-row"><span>↔️ Botões de baixo</span><span class="ctrl-val">Esquivas</span></div>
+          <div class="ctrl-row"><span>⏸ Canto direito</span><span class="ctrl-val">Pausar</span></div>
+        </div>
+
+        <button id="btn-controls-close" class="btn-gold">Entendi!</button>
+      </div>
+    </div>
+
+    <!-- ===== TUTORIAL INTERATIVO (4 etapas) ===== -->
+    <div id="screen-tutorial" class="screen overlay-dim hidden" role="dialog" aria-modal="true" aria-labelledby="tut-title">
+      <div class="modal-card tutorial-card">
+        <div id="tut-step-label" class="tut-step">1 / 4</div>
+        <canvas id="tut-canvas" width="300" height="150" aria-hidden="true"></canvas>
+        <h2 id="tut-title" class="modal-title small">Esquiva</h2>
+        <p id="tut-text" class="tut-text"></p>
+        <div class="menu-row">
+          <button id="btn-tut-back" class="btn-secondary">◀ Voltar</button>
+          <button id="btn-tut-next" class="btn-gold compact">Próximo ▶</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== MODAL FINAL DO TUTORIAL ===== -->
+    <div id="modal-tut-done" class="screen overlay-dim hidden" role="dialog" aria-modal="true" aria-labelledby="tutdone-title">
+      <div class="modal-card">
+        <div class="logo-gloves small">🥊</div>
+        <h2 id="tutdone-title" class="modal-title">Tudo pronto para lutar!</h2>
+        <button id="btn-tut-fight" class="btn-gold">Iniciar Fase 1</button>
+        <button id="btn-tut-menu" class="btn-secondary block">Voltar ao Menu</button>
       </div>
     </div>
   </div>

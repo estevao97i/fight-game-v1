@@ -16,7 +16,15 @@ empacotar com **Apache Cordova** para App Store e Google Play.
   com o spam: 5 socos seguidos no vazio = ele esquiva e contra-ataca.
 - **Esquiva perfeita** (no último instante) = câmera lenta + janela maior.
 
-No desktop (para testar): `A`/`D` = socos, `←`/`→` = esquivas.
+No desktop: `A`/`D` = socos, `←`/`→` = esquivas, `Esc` = pausa.
+
+Extras no menu: **Tutorial** interativo (4 etapas animadas), modal de
+**Controles** (detecta desktop/mobile) e seletor de **Dificuldade**
+(Fácil = botão de esquiva certo brilha · Normal = sem dicas ·
+Difícil = sem dicas + golpes 15% mais rápidos e 25% mais fortes).
+
+Música de fundo: coloque `bgm-fight.mp3` em `www/assets/audio/`
+(instruções em [COLOQUE-A-MUSICA-AQUI.md](www/assets/audio/COLOQUE-A-MUSICA-AQUI.md)).
 
 ## Rodar no navegador (desenvolvimento)
 
