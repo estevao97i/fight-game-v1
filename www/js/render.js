@@ -834,6 +834,8 @@ const Render = (() => {
         ctx.restore();
       }
 
+      // aura energética crescente do modo Revenge (no-op com modo OFF)
+      if (typeof Revenge !== "undefined") Revenge.gloveGlow(ctx, gx, gy, gr + 4);
       drawGlove(gx, gy, gr, C.playerGloveA, C.playerGloveB, dir * 0.25);
     }
 
@@ -945,12 +947,15 @@ const Render = (() => {
     // mas só se a dificuldade atual mostrar a dica (Fácil).
     const telegraphing = opponent.state === OPP_STATE.PREPARING_ATTACK && game.showDodgeHint;
     const correctDodgeId = opponent.attackSide === SIDE.LEFT ? "DODGE_L" : "DODGE_R";
+    // Na escolha do contra-ataque (Revenge), os DOIS socos piscam.
+    const revengeChoice = typeof Revenge !== "undefined" && Revenge.choiceActive();
 
     for (const b of Render.buttons) {
       const pressed = [...activePointers.values()].includes(b.id);
       const hovered = hoverId === b.id && !pressed && !locked;
       const press = pressed ? 4 : 0;
-      const highlight = telegraphing && b.id === correctDodgeId && !locked;
+      const highlight = (telegraphing && b.id === correctDodgeId && !locked) ||
+                        (revengeChoice && b.kind === "punch" && !locked);
 
       if (highlight) {
         const pulse = 0.5 + 0.5 * Math.sin(game.clock / 80);
@@ -1407,6 +1412,7 @@ const Render = (() => {
     renderPauseButton();
     renderButtons(activePointers);
     renderBanner();
+    if (typeof Revenge !== "undefined") Revenge.render(ctx); // HUD do modo Revenge
     Effects.renderFloaters(ctx);
     renderIntroCard();
     renderKO();

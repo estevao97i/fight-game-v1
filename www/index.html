@@ -38,6 +38,14 @@
         </div>
         <p class="hint" id="diff-desc"></p>
 
+        <!-- Modo opcional: Slow Motion Revenge -->
+        <div class="seg-label">SLOW MOTION REVENGE</div>
+        <div id="revenge-seg" class="seg" role="radiogroup" aria-label="Slow Motion Revenge">
+          <button class="seg-opt" data-revenge="off" role="radio" aria-checked="false">🎯 OFF</button>
+          <button class="seg-opt" data-revenge="on"  role="radio" aria-checked="false">⚡ ON</button>
+        </div>
+        <p class="hint" id="revenge-desc">Contra-ataques encadeados em câmera lenta</p>
+
         <div class="menu-row">
           <button id="btn-tutorial" class="btn-secondary">📖 Tutorial</button>
           <button id="btn-controls" class="btn-secondary">🎮 Controles</button>
@@ -131,6 +139,7 @@
   <script src="js/rive-bridge.js"></script>
   <script src="js/effects.js"></script>
   <script src="js/logic.js"></script>
+  <script src="js/revenge.js"></script>
   <script src="js/render.js"></script>
   <script src="js/main.js"></script>
 </body>

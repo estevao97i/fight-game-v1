@@ -76,6 +76,10 @@ function playerPunch(side) {
   setPlayerState(PLAYER_STATE.ATTACKING, CONFIG.PLAYER_PUNCH_MS);
   SFX.whoosh();
 
+  // Slow Motion Revenge: na janela de escolha, este soco é o contra-golpe
+  // da chain (liga o slow motion e dá ao rival a chance de desviar).
+  if (typeof Revenge !== "undefined") Revenge.onPlayerPunch();
+
   // Detecção de spam (bem tolerante: 5 socos em 1,3s).
   player.recentPunches.push(game.clock);
   player.recentPunches = player.recentPunches.filter(
@@ -146,8 +150,10 @@ function updatePlayerPunchCollision() {
 
   if (opponent.state === OPP_STATE.VULNERABLE) {
     // GOLPE FORTE — janela de contra-ataque aproveitada!
+    // No Revenge, o golpe final da chain sai multiplicado.
     game.combo++;
-    const dmg = Math.max(1, Math.round(CONFIG.DMG_PLAYER_VULN_HIT * def));
+    const revMult = typeof Revenge !== "undefined" ? Revenge.damageMultiplier() : 1;
+    const dmg = Math.max(1, Math.round(CONFIG.DMG_PLAYER_VULN_HIT * def * revMult));
     damage(opponent, dmg);
     setOpponentState(OPP_STATE.HIT, CONFIG.OPP_HIT_STUN_MS);
     opponent.hitFlash = 1;
@@ -158,6 +164,7 @@ function updatePlayerPunchCollision() {
     Effects.comic(ix, iy - 10); // "POW!" de quadrinhos
     Effects.damageText(a.cx, a.headY - 60, "-" + dmg, CONFIG.COLORS.gold, true);
     showBanner(game.combo > 1 ? `COMBO x${game.combo}!` : "ACERTOU!", CONFIG.COLORS.good);
+    if (typeof Revenge !== "undefined") Revenge.onPlayerLanded(ix, iy);
     checkGameOver();
   } else if (opponent.state !== OPP_STATE.DODGING && opponent.state !== OPP_STATE.HIT) {
     // JAB de chip damage — dano pequeno, sem punição.
@@ -192,6 +199,14 @@ function resolveOpponentStrike() {
     // ESQUIVOU! Abre a janela de contra-ataque (encolhe a cada fase).
     const sinceDodge = game.clock - player.lastDodgeAt;
     const perfect = sinceDodge <= CONFIG.PERFECT_DODGE_MS;
+
+    // Modo Slow Motion Revenge: se ativo, ele assume o fluxo a partir
+    // daqui (COUNTER_CHOICE em vez da janela vulnerável normal).
+    if (typeof Revenge !== "undefined" && Revenge.onDodgeSuccess(perfect)) {
+      SFX.dodge();
+      return;
+    }
+
     const baseVuln = CHAR().stats.vuln;
     const vulnMs = perfect ? Math.round(baseVuln * 1.35) : baseVuln;
 
@@ -207,7 +222,10 @@ function resolveOpponentStrike() {
     SFX.dodge();
   } else {
     // Tomou o soco — o dano sobe a cada fase (e com a dificuldade).
-    damage(player, oppDamage());
+    // Na chain do Revenge o golpe que conecta vem multiplicado.
+    const revMult = typeof Revenge !== "undefined" ? Revenge.damageMultiplier() : 1;
+    damage(player, Math.round(oppDamage() * revMult));
+    if (typeof Revenge !== "undefined") Revenge.onPlayerWasHit();
     player.hitFlash = 1;
     game.combo = 0;
     if (
@@ -220,7 +238,7 @@ function resolveOpponentStrike() {
     }
     SFX.playerHit();
     Effects.addShake(11);
-    Effects.damageText(CONFIG.VW / 2, 420, "-" + oppDamage(), CONFIG.COLORS.bad, true);
+    Effects.damageText(CONFIG.VW / 2, 420, "-" + Math.round(oppDamage() * revMult), CONFIG.COLORS.bad, true);
     showBanner("VOCÊ TOMOU O SOCO!", CONFIG.COLORS.bad);
     checkGameOver();
   }

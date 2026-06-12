@@ -178,6 +178,7 @@
     overShown = false;
     closeModals();
     SFX.bgmStop();
+    Revenge.reset();
     resetMatch();
     game.phase = "START";
     screenOver.classList.add("hidden");
@@ -206,6 +207,7 @@
     game.paused = false;
     overShown = false;
     closeModals();
+    Revenge.reset();
     resetMatch();
     // Card "FASE X" aparece antes do sino (transição em logic.js).
     game.phase = "INTRO";
@@ -282,6 +284,36 @@
       SFX.uiTap();
       setDifficulty(b.dataset.diff);
       updateDifficultyUI();
+      vibrate(10);
+      b.blur();
+    });
+  });
+
+  /* =====================================================================
+     SLOW MOTION REVENGE — segmented control ON/OFF (persistido no aparelho)
+     ===================================================================== */
+
+  const revengeSegButtons = [...document.querySelectorAll("#revenge-seg .seg-opt")];
+  const revengeDesc = document.getElementById("revenge-desc");
+
+  function updateRevengeUI() {
+    const on = Revenge.isEnabled();
+    revengeSegButtons.forEach((b) => {
+      const selected = (b.dataset.revenge === "on") === on;
+      b.classList.toggle("selected", selected);
+      b.setAttribute("aria-checked", selected ? "true" : "false");
+    });
+    revengeDesc.textContent = on
+      ? "Esquive e encadeie contra-ataques em câmera lenta!"
+      : "Contra-ataques encadeados em câmera lenta";
+  }
+
+  revengeSegButtons.forEach((b) => {
+    b.addEventListener("click", () => {
+      SFX.init();
+      SFX.uiTap();
+      Revenge.setEnabled(b.dataset.revenge === "on");
+      updateRevengeUI();
       vibrate(10);
       b.blur();
     });
@@ -393,8 +425,11 @@
     lastTime = now;
     if (dt > 50) dt = 50; // evita saltos após aba em segundo plano
 
-    // Câmera lenta da esquiva perfeita: o tempo do MUNDO desacelera.
-    const worldDt = game.slowmo > 0 ? dt * 0.35 : dt;
+    // Slow Motion Revenge roda em tempo REAL (barras/janelas de reação)…
+    Revenge.update(dt);
+
+    // …e desacelera o tempo do MUNDO (junto com a esquiva perfeita).
+    const worldDt = dt * Revenge.timeScale() * (game.slowmo > 0 ? 0.35 : 1);
 
     updateGame(worldDt); // no pause, retorna cedo: tudo congelado
     Render.render(activePointers);
@@ -413,6 +448,7 @@
     game.phase = "START";
     updateStartScreen();
     updateDifficultyUI();
+    updateRevengeUI();
     requestAnimationFrame(frame);
   }
 
